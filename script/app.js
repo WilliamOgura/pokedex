@@ -1,55 +1,69 @@
 // Pegamos a div onde os cards dos pokémons serão inseridos
 const pokemonList = document.getElementById("pokemon-list");
+const searchInput = document.getElementById("pokemon-search");
+let allPokemons=[];
 
-// Função principal que carrega os 151 pokémons da PokéAPI
-async function loadPokemons() {
+// Função para buscar os 151 pokémons
+const fetchPokemons = async () => {
   try {
-    // Faz uma requisição para buscar os 151 primeiros pokémons
-    const response = await fetch("https://pokeapi.co/api/v2/pokemon?limit=151");
-    const data = await response.json(); // Converte a resposta em JSON
+    for(let i=1; i <=151; i++) {
+      const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${i}`)
+      const data = await res.json();
 
-    const pokemons = data.results; // Aqui temos um array com nome e URL de cada pokémon
-
-    // Percorremos cada pokémon para buscar os dados completos (imagem, tipos, etc.)
-    for (const pokemon of pokemons) {
-      const res = await fetch(pokemon.url); // Faz uma nova requisição com a URL específica
-      const pokeData = await res.json(); // Converte novamente a resposta em JSON
-
-      // Chama a função que vai criar o card e mostrar na tela
-      renderPokemonCard(pokeData);
+      const pokemon = {
+        name: data.name,
+        number: data.id.toString().padStart(3,"0"),
+        image: data.sprites.front_default,
+        types: data.types.map(t => t.type.name)
+      } 
+      allPokemons.push(pokemon);
     }
+    displayPokemons(allPokemons);
+    
   } catch (error) {
-    // Caso aconteça algum erro (ex: sem internet), mostramos no console
-    console.error("Erro ao carregar os pokémons:", error);
-  }
+    console.error("Pokemon não encontrado", error);
+    pokemonList.innerHTML = `<p>Erro ao carregar pokémon. Tente novamente mais tarde</p>`
+  } 
 }
 
-// Função que cria e insere um card de pokémon na tela
-function renderPokemonCard(pokemon) {
-  const card = document.createElement("div"); // Criamos uma div nova
-  card.classList.add("pokemon-card"); // Adicionamos uma classe pra estilizar
+function displayPokemons(pokemons) {
+  pokemonList.innerHTML = ""; // Limpa a lista atual
 
-  // Mapeamos os tipos do pokémon e criamos spans para cada um com classe e nome
-  const types = pokemon.types.map(t => 
-    `<span class="type ${t.type.name}">${t.type.name}</span>`
-  ).join(""); // Unimos os spans em uma string só
+  pokemons.forEach(pokemon => {
+    // Cria um card personalizado com os dados simplificados do fetchPokemons()
+    const card = document.createElement("div");
+    card.classList.add("pokemon-card");
 
-  // Criamos o HTML do card com imagem, número, nome e tipos
-  card.innerHTML = `
-    <img src="${pokemon.sprites.front_default}" alt="${pokemon.name}" />
-    <h3>#${String(pokemon.id).padStart(3, '0')}</h3>
-    <p>${capitalize(pokemon.name)}</p>
-    <div class="pokemon-types">${types}</div>
-  `;
+    const typeTags = pokemon.types.map(type => 
+    `<span class="type ${type}">${type}</span>`
+    ).join("")
 
-  // Adicionamos o card na lista principal da Pokédex
-  pokemonList.appendChild(card);
+    card.innerHTML = `
+      <img src="${pokemon.image}" alt="${pokemon.name}" />
+      <h3>#${pokemon.number}</h3>
+      <p>${capitalize(pokemon.name)}</p>
+      <div class="pokemon-types">${typeTags}</div>
+    `;
+
+    pokemonList.appendChild(card);
+  });
 }
 
-// Função simples para colocar a primeira letra do nome em maiúscula
+// Função para colocar a primeira letra do nome em maiúscula
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+searchInput.addEventListener("input", (event) => {
+  const query = event.target.value.toLowerCase();
+
+  const filtered = allPokemons.filter(pokemon =>
+    pokemon.name.toLowerCase().includes(query) ||
+    pokemon.number.includes(query)
+  );
+
+  displayPokemons(filtered)
+})
+
 // Chamamos a função inicial para começar o carregamento dos pokémons
-loadPokemons();
+fetchPokemons();
